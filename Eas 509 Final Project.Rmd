@@ -1,0 +1,524 @@
+---
+title: "EAS 509 Final Project"
+author: "Sydney Grant"
+date: "2022-12-05"
+output: pdf_document
+---
+
+```{r}
+lung <- read.csv("F:\\EAS 509\\Final Project\\lung_dataset.csv")
+lung <- na.omit(lung)
+```
+
+```{r}
+# adjust dataset for PCA
+
+lung_pca <- lung[,c(4,5,8,10:20,22,24:25,26,30)]
+
+table(lung_pca$CANCER_TYPE)
+
+# vast majority of samples are non-small cell lung cancer so limit to only this type
+
+lung_pca <- subset(lung_pca, CANCER_TYPE == "Non-Small Cell Lung Cancer")
+lung_pca <- lung_pca[,-1]
+
+table(lung_pca$SAMPLE_TYPE)
+
+lung_pca$SAMPLE_TYPE <- as.numeric(factor(lung_pca$SAMPLE_TYPE))
+
+table(lung_pca$SMOKING_STATUS)
+table(lung_pca$IO_DRUG)
+
+drug_Atezolizumab <- c()
+drug_Durvalumab <- c()
+drug_Nivolumab <- c()
+drug_Ipilimumab <- c()
+drug_Pembrolizumab <- c()
+drug_Tremelimumab <- c()
+resection <- c()
+
+smoke_current <- c()
+smoke_never <- c()
+smoke_former <- c()
+
+for (i in 1:nrow(lung_pca)){
+  ss <- lung_pca$SMOKING_STATUS[[i]]
+  if (ss == "Current smoker (within 6 months of diagnosis)"){
+    smoke_current <- c(smoke_current, 1)
+    smoke_never <- c(smoke_never, 0)
+    smoke_former <- c(smoke_former, 0)
+  }
+    if (ss == "Never smoker"){
+    smoke_current <- c(smoke_current, 0)
+    smoke_never <- c(smoke_never, 1)
+    smoke_former <- c(smoke_former, 0)
+    }
+    if (ss == "Former smoker"){
+    smoke_current <- c(smoke_current, 0)
+    smoke_never <- c(smoke_never, 0)
+    smoke_former <- c(smoke_former, 1)
+    }
+  drug <- lung_pca$IO_DRUG[[i]]
+  if (drug == "Atezolizumab"){
+    drug_Atezolizumab <- c(drug_Atezolizumab, 1)
+    drug_Durvalumab <- c(drug_Durvalumab, 0)
+    drug_Nivolumab <- c(drug_Nivolumab, 0)
+    drug_Ipilimumab <- c(drug_Ipilimumab, 0)
+    drug_Pembrolizumab <- c(drug_Pembrolizumab, 0)
+    drug_Tremelimumab <- c(drug_Tremelimumab, 0)
+    resection <- c(resection, 0)
+  }
+    if (drug == "Durvalumab"){
+    drug_Atezolizumab <- c(drug_Atezolizumab, 0)
+    drug_Durvalumab <- c(drug_Durvalumab, 1)
+    drug_Nivolumab <- c(drug_Nivolumab, 0)
+    drug_Ipilimumab <- c(drug_Ipilimumab, 0)
+    drug_Pembrolizumab <- c(drug_Pembrolizumab, 0)
+    drug_Tremelimumab <- c(drug_Tremelimumab, 0)
+    resection <- c(resection, 0)
+    }
+    if (drug == "Durvalumab+Tremelimumab"){
+    drug_Atezolizumab <- c(drug_Atezolizumab, 0)
+    drug_Durvalumab <- c(drug_Durvalumab, 1)
+    drug_Nivolumab <- c(drug_Nivolumab, 0)
+    drug_Ipilimumab <- c(drug_Ipilimumab, 0)
+    drug_Pembrolizumab <- c(drug_Pembrolizumab, 0)
+    drug_Tremelimumab <- c(drug_Tremelimumab, 1)
+    resection <- c(resection, 0)
+    }
+      if (drug == "Ipilimumab+Nivolumab" | drug == "Nivolumab (+added ipilimumab)"){
+    drug_Atezolizumab <- c(drug_Atezolizumab, 0)
+    drug_Durvalumab <- c(drug_Durvalumab, 0)
+    drug_Nivolumab <- c(drug_Nivolumab, 1)
+    drug_Ipilimumab <- c(drug_Ipilimumab, 1)
+    drug_Pembrolizumab <- c(drug_Pembrolizumab, 0)
+    drug_Tremelimumab <- c(drug_Tremelimumab, 0)
+    resection <- c(resection, 0)
+      }
+        if (drug == "Nivolumab"){
+    drug_Atezolizumab <- c(drug_Atezolizumab, 0)
+    drug_Durvalumab <- c(drug_Durvalumab, 0)
+    drug_Nivolumab <- c(drug_Nivolumab, 1)
+    drug_Ipilimumab <- c(drug_Ipilimumab, 0)
+    drug_Pembrolizumab <- c(drug_Pembrolizumab, 0)
+    drug_Tremelimumab <- c(drug_Tremelimumab, 0)
+    resection <- c(resection, 0)
+        }
+        if (drug == "Pembrolizumab"){
+    drug_Atezolizumab <- c(drug_Atezolizumab, 0)
+    drug_Durvalumab <- c(drug_Durvalumab, 0)
+    drug_Nivolumab <- c(drug_Nivolumab, 0)
+    drug_Ipilimumab <- c(drug_Ipilimumab, 0)
+    drug_Pembrolizumab <- c(drug_Pembrolizumab, 1)
+    drug_Tremelimumab <- c(drug_Tremelimumab, 0)
+    resection <- c(resection, 0)
+        }
+        if (drug == "Resection + Ipilimumab+Nivolumab"){
+    drug_Atezolizumab <- c(drug_Atezolizumab, 0)
+    drug_Durvalumab <- c(drug_Durvalumab, 0)
+    drug_Nivolumab <- c(drug_Nivolumab, 1)
+    drug_Ipilimumab <- c(drug_Ipilimumab, 1)
+    drug_Pembrolizumab <- c(drug_Pembrolizumab, 0)
+    drug_Tremelimumab <- c(drug_Tremelimumab, 0)
+    resection <- c(resection, 1)
+        }
+          if (drug == "Resection + Nivolumab"){
+    drug_Atezolizumab <- c(drug_Atezolizumab, 0)
+    drug_Durvalumab <- c(drug_Durvalumab, 0)
+    drug_Nivolumab <- c(drug_Nivolumab, 1)
+    drug_Ipilimumab <- c(drug_Ipilimumab, 0)
+    drug_Pembrolizumab <- c(drug_Pembrolizumab, 0)
+    drug_Tremelimumab <- c(drug_Tremelimumab, 0)
+    resection <- c(resection, 1)
+        }
+}
+
+lung_pca$Atezolizumab <- unlist(drug_Atezolizumab)
+lung_pca$Durvalumab <- unlist(drug_Durvalumab)
+lung_pca$Nivolumab <- unlist(drug_Nivolumab)
+lung_pca$Ipilimumab <- unlist(drug_Ipilimumab)
+lung_pca$Pembrolizumab <- unlist(drug_Pembrolizumab)
+lung_pca$Tremelimumab <- unlist(drug_Tremelimumab)
+lung_pca$resection <- unlist(resection)
+
+lung_pca$Current_Smoker <- unlist(smoke_current)
+lung_pca$Never_Smoker <- unlist(smoke_never)
+lung_pca$Former_Smoker <- unlist(smoke_former)
+
+# change to numeric and get rid of columns which all values are the same
+
+lung_pca$EGFR_DRIVER <- as.numeric(factor(lung_pca$EGFR_DRIVER))
+lung_pca$ERBB2_DRIVER <- as.numeric(factor(lung_pca$ERBB2_DRIVER))
+lung_pca$BRAF_DRIVER <- as.numeric(factor(lung_pca$BRAF_DRIVER))
+lung_pca$MET_DRIVER <- as.numeric(factor(lung_pca$MET_DRIVER))
+lung_pca$STK11_DRIVER <- as.numeric(factor(lung_pca$STK11_DRIVER))
+lung_pca$ARID1A_DRIVER <- as.numeric(factor(lung_pca$ARID1A_DRIVER))
+lung_pca$SEX <- as.numeric(factor(lung_pca$SEX))
+
+
+# remove old drug and smoking columns
+lung_pca <- lung_pca[,-c(6, 8, 9, 15,17)]
+
+lung_pca$AGE_AT_SEQ_REPORTED_YEARS <- as.numeric(lung_pca$AGE_AT_SEQ_REPORTED_YEARS)
+lung_pca$PACK_YEARS <- as.numeric(lung_pca$PACK_YEARS)
+
+lung_pca <- na.omit(lung_pca)
+
+```
+
+
+
+
+```{r}
+lung_pca2 <- scale(lung_pca)
+pc <- prcomp(lung_pca2[,-13], scale = F)
+pc
+```
+
+
+
+
+```{r}
+
+var <- pc$sdev^2 / sum(pc$sdev^2)
+
+scree_df <- data.frame("PC" = 1:22, "Variance" = unlist(var))
+
+scree_plot <- ggplot(scree_df, aes(PC, Variance)) +
+  geom_line() +
+  geom_point() +
+  theme_minimal() +
+  xlab("Principle Component") +
+  ylab("Variance Explained")
+
+ggplotly(scree_plot)
+
+
+```
+
+```{r}
+
+pfs_group <- c()
+for (i in 1:nrow(lung_pca)){
+  if (lung_pca$PFS_MONTHS[[i]] >= mean(lung_pca$PFS_MONTHS)){
+    pfs_group <- c(pfs_group, 1)
+  }
+    if (lung_pca$PFS_MONTHS[[i]] < mean(lung_pca$PFS_MONTHS)){
+    pfs_group <- c(pfs_group, 0)
+  }
+}
+
+
+
+ggplotly(ggbiplot(pc, scale = TRUE, groups=pfs_group))
+```
+
+```{r fig.width=9,fig.height=9}
+par(mar = c(5, 2, 4, 2), mfrow=c(2,2))
+for(k in c(2,3,4,9)) {
+  kmeans_cluster <- kmeans(lung_pca2[,-13], k, nstart=20)
+  si <- silhouette(kmeans_cluster$cluster, dist = dist(lung_pca2[,-13]))
+  plot(si,main="")
+}
+par(mar = c(1, 1, 1, 1), mfrow=c(1,1))
+```
+```{r, warning=FALSE}
+km.out <- kmeans(lung_pca2[,-13], 2, nstart = 20)
+
+plot_ly(x=pc$x[,1], y = pc$x[,2], color = as.factor(km.out$cluster)) %>% layout(yaxis=list(scaleanchor="x", scaleratio=1))
+```
+```{r, warning=FALSE}
+gap_kmeans <- clusGap(lung_pca2[,-13], kmeans, nstart = 20, K.max = 10, B = 100)
+
+plot(gap_kmeans, main = "Gap Statistic: kmeans")
+
+set.seed(100)
+km.out <- kmeans(lung_pca2[,-13], 4, nstart = 20)
+
+plot_ly(x=pc$x[,1], y = pc$x[,2], color = as.factor(km.out$cluster)) %>% layout(yaxis=list(scaleanchor="x", scaleratio=1))
+```
+
+```{r}
+smoke_df <- data.frame("Pack_Years" = c(subset(lung_pca, cluster == 1)$PACK_YEARS, subset(lung_pca, cluster == 2)$PACK_YEARS, 
+                                        subset(lung_pca, cluster == 3)$PACK_YEARS, subset(lung_pca, cluster == 4)$PACK_YEARS),
+                       "Cluster" = c(rep(1, nrow(subset(lung_pca, cluster == 1))), rep(2, nrow(subset(lung_pca, cluster == 2))),
+                                     rep(3, nrow(subset(lung_pca, cluster == 3))), rep(4, nrow(subset(lung_pca, cluster == 4)))))
+smoking_plot <- ggplot(subset(smoke_df, Cluster == 3), aes(x = Pack_Years)) +
+  geom_density(alpha = 0.5, color = "slateblue4", fill = "slateblue4") +
+  #geom_density(alpha = 0.5, color = "palevioletred4", fill = "palevioletred4") +
+  #geom_density(alpha = 0.5, color = "seagreen4", fill = "seagreen4") +
+  #geom_density(alpha = 0.5, color = "darkorange3", fill = "darkorange3") +
+  theme_minimal() +
+  ggtitle("Cluster 3") +
+  xlim(0,100) +
+  ylim(0,0.025)
+smoking_plot
+```
+
+
+
+
+
+
+
+```{r}
+lung_km <- lung_pca
+lung_km$Outcome <- 1
+
+fit.surv <- survfit(Surv(PFS_MONTHS, Outcome) ~ 1, data=lung_km)
+ggsurvplot(fit = fit.surv, data = lung_km)
+```
+```{r survival plot2, include=TRUE}
+fit.posres <- survfit(Surv(PFS_MONTHS, Outcome) ~ EGFR_DRIVER, data=lung_km)
+
+ggsurvplot(fit = fit.posres, data = lung_km, pval = TRUE,
+           legend.labs = c("EGFR Non-mutated", "EGFR Mutated"),
+           ggtheme = theme_minimal(),
+           linetype = "strata",
+           surv.median.line = "hv",
+           conf.int =T,
+           xlab = "Months",
+    ylab = "Estimated Probability of Survival")
+```
+```{r significance test, include=TRUE}
+logrank.test <- survdiff(Surv(PFS_MONTHS, Outcome) ~ EGFR_DRIVER, data=lung_km)
+logrank.test
+```
+```{r survival plot2, include=TRUE}
+fit.posres <- survfit(Surv(PFS_MONTHS, Outcome) ~ ERBB2_DRIVER, data=lung_km)
+
+ggsurvplot(fit = fit.posres, data = lung_km, pval = TRUE,
+           legend.labs = c("ERBB2 Non-mutated", "ERBB2 Mutated"),
+           ggtheme = theme_light(),
+           linetype = "strata",
+           surv.median.line = "hv",
+           conf.int =T,
+           xlab = "Months",
+    ylab = "Estimated Probability of Survival")
+```
+```{r significance test, include=TRUE}
+logrank.test <- survdiff(Surv(PFS_MONTHS, Outcome) ~ ERBB2_DRIVER, data=lung_km)
+logrank.test
+```
+```{r survival plot2, include=TRUE}
+fit.posres <- survfit(Surv(PFS_MONTHS, Outcome) ~ BRAF_DRIVER, data=lung_km)
+
+ggsurvplot(fit = fit.posres, data = lung_km, pval = TRUE,
+           legend.labs = c("BRAF Non-mutated", "BRAF Mutated"),
+           ggtheme = theme_light(),
+           linetype = "strata",
+           surv.median.line = "hv",
+           conf.int =T,
+           xlab = "Months",
+    ylab = "Estimated Probability of Survival")
+```
+
+```{r significance test, include=TRUE}
+logrank.test <- survdiff(Surv(PFS_MONTHS, Outcome) ~ BRAF_DRIVER, data=lung_km)
+logrank.test
+```
+
+```{r survival plot2, include=TRUE}
+fit.posres <- survfit(Surv(PFS_MONTHS, Outcome) ~ MET_DRIVER, data=lung_km)
+
+ggsurvplot(fit = fit.posres, data = lung_km, pval = TRUE,
+           legend.labs = c("MET Non-mutated", "MET Mutated"),
+           ggtheme = theme_light(),
+           linetype = "strata",
+           surv.median.line = "hv",
+           conf.int =T,
+           xlab = "Months",
+    ylab = "Estimated Probability of Survival")
+```
+
+```{r significance test, include=TRUE}
+logrank.test <- survdiff(Surv(PFS_MONTHS, Outcome) ~ MET_DRIVER, data=lung_km)
+logrank.test
+```
+
+```{r survival plot2, include=TRUE}
+fit.posres <- survfit(Surv(PFS_MONTHS, Outcome) ~ STK11_DRIVER, data=lung_km)
+
+ggsurvplot(fit = fit.posres, data = lung_km, pval = TRUE,
+           legend.labs = c("STK11 Non-mutated", "STK11 Mutated"),
+           ggtheme = theme_light(),
+           linetype = "strata",
+           surv.median.line = "hv",
+           conf.int =T,
+           xlab = "Months",
+    ylab = "Estimated Probability of Survival")
+```
+
+```{r significance test, include=TRUE}
+logrank.test <- survdiff(Surv(PFS_MONTHS, Outcome) ~ STK11_DRIVER, data=lung_km)
+logrank.test
+```
+
+```{r survival plot2, include=TRUE}
+fit.posres <- survfit(Surv(PFS_MONTHS, Outcome) ~ ARID1A_DRIVER, data=lung_km)
+
+ggsurvplot(fit = fit.posres, data = lung_km, pval = TRUE,
+           legend.labs = c("ARID1A Non-mutated", "ARID1A Mutated"),
+           ggtheme = theme_light(),
+           linetype = "strata",
+           surv.median.line = "hv",
+           conf.int =T,
+           xlab = "Months",
+    ylab = "Estimated Probability of Survival")
+```
+
+```{r significance test, include=TRUE}
+logrank.test <- survdiff(Surv(PFS_MONTHS, Outcome) ~ ARID1A_DRIVER, data=lung_km)
+logrank.test
+```
+
+```{r survival plot2, include=TRUE}
+mutation_list_2 <- c()
+mutation_list_3 <- c()
+for (i in 1:nrow(lung_km)){
+  num = sum(lung_km[i,5:10]) - 5
+  if (num >= 2){mutation_list_2 <- c(mutation_list_2, "2 or more")}
+  if (num >= 3){mutation_list_3 <- c(mutation_list_3, "3 or more")}
+  if (num < 2){mutation_list_2 <- c(mutation_list_2, "less than 2")}
+  if (num < 3){mutation_list_3 <- c(mutation_list_3, "less than 3")}
+}
+lung_km$Mutations_2 <- unlist(mutation_list_2)
+lung_km$Mutations_3 <- unlist(mutation_list_3)
+
+
+
+
+fit.posres <- survfit(Surv(PFS_MONTHS, Outcome) ~ Mutations_3, data=lung_km)
+
+ggsurvplot(fit = fit.posres, data = lung_km, pval = TRUE,
+           legend.labs = c("More than 3 mutations", "Less than 3 mutations"),
+           ggtheme = theme_light(),
+           linetype = "strata",
+           surv.median.line = "hv",
+           conf.int =T,
+           xlab = "Months",
+    ylab = "Estimated Probability of Survival")
+```
+
+
+
+
+
+
+```{r survival plot2, include=TRUE}
+fit.posres <- survfit(Surv(PFS_MONTHS, Outcome) ~ SEX, data=lung_km)
+
+ggsurvplot(fit = fit.posres, data = lung_km, pval = TRUE,
+           legend.labs = c("Male", "Female"),
+           ggtheme = theme_light(),
+           linetype = "strata",
+           surv.median.line = "hv",
+           conf.int =T,
+           xlab = "Months",
+    ylab = "Estimated Probability of Survival")
+```
+
+```{r significance test, include=TRUE}
+logrank.test <- survdiff(Surv(PFS_MONTHS, Outcome) ~ SEX, data=lung_km)
+logrank.test
+```
+
+
+```{r survival plot2, include=TRUE}
+smoke_list <- c()
+for (i in 1:nrow(lung_km)){
+  if (lung_km$Current_Smoker[[i]] == 1){smoke_list <- c(smoke_list, "Current Smoker")}
+  if (lung_km$Never_Smoker[[i]] == 1){smoke_list <- c(smoke_list, "Never Smoker")}
+  if (lung_km$Former_Smoker[[i]] == 1){smoke_list <- c(smoke_list, "Former Smoker")}
+}
+lung_km$Smoking_Status <- unlist(smoke_list)
+
+
+
+fit.posres <- survfit(Surv(PFS_MONTHS, Outcome) ~ Smoking_Status, data=lung_km)
+
+ggsurvplot(fit = fit.posres, data = lung_km, pval = TRUE,
+           legend.labs = c("Former", "Current", "Never"),
+           ggtheme = theme_light(),
+           linetype = "strata",
+           surv.median.line = "hv",
+           conf.int =T,
+           xlab = "Months",
+    ylab = "Estimated Probability of Survival")
+```
+
+
+```{r significance test, include=TRUE}
+logrank.test <- survdiff(Surv(PFS_MONTHS, Outcome) ~ Smoking_Status, data=lung_km)
+logrank.test
+```
+
+```{r survival plot2, include=TRUE}
+smoke_list <- c()
+for (i in 1:nrow(lung_km)){
+  if (lung_km$PACK_YEARS[[i]] < 25){smoke_list <- c(smoke_list, "< 25")}
+  if (lung_km$PACK_YEARS[[i]] >= 25){smoke_list <- c(smoke_list, ">= 25")}
+}
+lung_km$Smoking_Status <- unlist(smoke_list)
+
+
+
+fit.posres <- survfit(Surv(PFS_MONTHS, Outcome) ~ Smoking_Status, data=lung_km)
+
+ggsurvplot(fit = fit.posres, data = lung_km, pval = TRUE,
+           #legend.labs = c(">= 25", "< 25"),
+           ggtheme = theme_light(),
+           linetype = "strata",
+           surv.median.line = "hv",
+           conf.int =T,
+           xlab = "Months",
+           risk.table = TRUE,
+           risk.table.col = "strata",
+    ylab = "Estimated Probability of Survival")
+```
+
+
+
+```{r survival plot2, include=TRUE}
+drug_list <- c()
+for (i in 1:nrow(lung_km)){
+  if (lung_km$Atezolizumab[[i]] == 1 & sum(lung_km[i,14:20]) == 1){drug_list <- c(drug_list, "Atezolizumab")}
+  if (lung_km$Durvalumab[[i]] == 1 & sum(lung_km[i,14:20]) == 1){drug_list <- c(drug_list, "Durvalumab")}
+  if (lung_km$Nivolumab[[i]] == 1 & sum(lung_km[i,14:20]) == 1){drug_list <- c(drug_list, "Nivolumab")}
+  if (lung_km$Ipilimumab[[i]] == 1 & sum(lung_km[i,14:20]) == 1){drug_list <- c(drug_list, "Ipilimumab")}
+  if (lung_km$Pembrolizumab[[i]] == 1 & sum(lung_km[i,14:20]) == 1){drug_list <- c(drug_list, "Pembrolizumab")}
+  if (lung_km$Tremelimumab[[i]] == 1 & sum(lung_km[i,14:20]) == 1){drug_list <- c(drug_list, "Tremelimumab")}
+  if (sum(lung_km[i,14:20]) > 1){drug_list <- c(drug_list, "Combination")}
+  
+}
+lung_km$Treatment <- unlist(drug_list)
+
+
+
+fit.posres <- survfit(Surv(PFS_MONTHS, Outcome) ~ Treatment, data=lung_km)
+
+ggsurvplot(fit = fit.posres, data = lung_km, pval = TRUE,
+           legend.labs = c("Nivolumab", "Atezolizumab", "Durvalumab", "Pemrolizumab", "Combination"),
+           ggtheme = theme_light(),
+           linetype = "strata",
+           surv.median.line = "hv",
+           conf.int =T,
+           xlab = "Months",
+    ylab = "Estimated Probability of Survival")
+```
+
+
+```{r significance test, include=TRUE}
+logrank.test <- survdiff(Surv(PFS_MONTHS, Outcome) ~ Treatment, data=lung_km)
+logrank.test
+```
+
+
+
+
+
+
+
+
+
+
